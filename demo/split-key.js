@@ -2,6 +2,7 @@ var window = this;
 
 importScripts(
   "../src/crypto-js/crypto.js",
+  "../src/crypto-js/ripemd160.js",
   "../src/crypto-js/sha256.js",
   "../src/jsbn/prng4.js",
   "../src/jsbn/rng.js",
@@ -17,7 +18,8 @@ importScripts(
 
   "../src/address.js",
   "../src/ecdsa.js",
-  "../src/paillier.js"
+  "../src/paillier.js",
+  "../src/eckey.js"
 );
 
 function hex(value) {
@@ -29,15 +31,15 @@ function hex(value) {
     return Crypto.util.bytesToHex(value);
   }
   return value;
-};
+}
 function ff(field, value) {
   value = hex(value);
-  postMessage({ "cmd": "ff", "field": field, "value": value });
-};
+  postMessage({ cmd: "ff", field: field, value: value });
+}
 
 function log() {
-  postMessage({ "cmd": "log", "args": Array.prototype.slice.apply(arguments) });
-};
+  postMessage({ cmd: "log", args: Array.prototype.slice.apply(arguments) });
+}
 
 function start() {
   var ecparams = getSECCurveByName("secp256k1");
@@ -50,19 +52,20 @@ function start() {
 
   var Alice = function (pubShare) {
     this.d1 = Bitcoin.ECDSA.getBigRandom(n);
-    ff('d1', this.d1);
+    ff("d1", this.d1);
 
-    this.paillier = Bitcoin.Paillier.generate(n.bitLength()*2+
-                                              Math.floor(Math.random()*10));
+    this.paillier = Bitcoin.Paillier.generate(
+      n.bitLength() * 2 + Math.floor(Math.random() * 10)
+    );
 
-    ff('p1_n', this.paillier.pub.n);
-    ff('p1_g', this.paillier.pub.g);
-    ff('p1_l', this.paillier.l);
-    ff('p1_m', this.paillier.m);
+    ff("p1_n", this.paillier.pub.n);
+    ff("p1_g", this.paillier.pub.g);
+    ff("p1_l", this.paillier.l);
+    ff("p1_m", this.paillier.m);
   };
   var Bob = function () {
     this.d2 = Bitcoin.ECDSA.getBigRandom(n);
-    ff('d2', this.d2);
+    ff("d2", this.d2);
   };
 
   Alice.prototype.getPub = function (P) {
@@ -70,7 +73,7 @@ function start() {
 
     P.validate();
 
-    return this.pub = P.multiply(this.d1).getEncoded();
+    return (this.pub = P.multiply(this.d1).getEncoded());
   };
 
   Alice.prototype.getPubShare = function () {
@@ -82,41 +85,48 @@ function start() {
   };
 
   Alice.prototype.step1 = function (message) {
-    var hash = Crypto.SHA256(Crypto.SHA256(message, {asBytes: true}), {asBytes: true});
+    var hash = Crypto.SHA256(Crypto.SHA256(message, { asBytes: true }), {
+      asBytes: true,
+    });
     this.e = BigInteger.fromByteArrayUnsigned(hash).mod(n);
 
     this.k1 = Bitcoin.ECDSA.getBigRandom(n);
-    ff('k1', this.k1);
+    ff("k1", this.k1);
 
     this.z1 = this.k1.modInverse(n);
-    ff('z1', this.z1);
+    ff("z1", this.z1);
 
     var Q_1 = G.multiply(this.k1);
-    ff('q1', Q_1);
+    ff("q1", Q_1);
 
     var alpha = this.paillier.encrypt(this.z1);
-    ff('alpha', alpha);
+    ff("alpha", alpha);
 
     var beta = this.paillier.encrypt(this.d1.multiply(this.z1).mod(n));
-    ff('beta', beta);
+    ff("beta", beta);
 
     var r_1 = Q_1.getX().toBigInteger().mod(n);
-    var A = this.paillier.encrypt(Bitcoin.ECDSA.getBigRandom(this.paillier.n.divide(n)));
-    ff('A', A);
+    var A = this.paillier.encrypt(
+      Bitcoin.ECDSA.getBigRandom(this.paillier.n.divide(n))
+    );
+    ff("A", A);
     var s_a = this.paillier.multiply(alpha, this.e);
     var s_b = this.paillier.multiply(beta, r_1);
-    var sigma_1 = this.paillier.addCrypt(this.paillier.addCrypt(s_a, s_b), this.paillier.multiply(A, n));
-    ff('sigma_1', sigma_1);
+    var sigma_1 = this.paillier.addCrypt(
+      this.paillier.addCrypt(s_a, s_b),
+      this.paillier.multiply(A, n)
+    );
+    ff("sigma_1", sigma_1);
 
-    var e = Crypto.SHA256(sigma_1.toByteArrayUnsigned(), {asBytes: true});
+    var e = Crypto.SHA256(sigma_1.toByteArrayUnsigned(), { asBytes: true });
     e = BigInteger.fromByteArrayUnsigned(e);
     var sigma_1n = this.paillier.rerandomize(sigma_1, e);
-    ff('sigma_1n', sigma_1n);
+    ff("sigma_1n", sigma_1n);
 
     var s_1 = this.paillier.decrypt(sigma_1n);
-    ff('s_1', s_1);
+    ff("s_1", s_1);
     var v_n = this.paillier.decryptR(sigma_1n, s_1);
-    ff('v_n', v_n);
+    ff("v_n", v_n);
 
     return {
       Q_1: Q_1,
@@ -127,7 +137,7 @@ function start() {
       paillier: this.paillier.pub,
       A: A,
       s_1: s_1,
-      v_n: v_n
+      v_n: v_n,
     };
   };
 
@@ -138,7 +148,9 @@ function start() {
     // Throws exception on error
     pkg.Q_1.validate();
 
-    var hash = Crypto.SHA256(Crypto.SHA256(message, {asBytes: true}), {asBytes: true});
+    var hash = Crypto.SHA256(Crypto.SHA256(message, { asBytes: true }), {
+      asBytes: true,
+    });
     this.e = BigInteger.fromByteArrayUnsigned(hash).mod(n);
 
     this.paillier = pkg.paillier;
@@ -148,54 +160,57 @@ function start() {
     var r_1 = pkg.Q_1.getX().toBigInteger().mod(n);
     var testSig = Bitcoin.ECDSA.serializeSig(r_1, pkg.s_1.mod(n));
     if (!Bitcoin.ECDSA.verify(hash, testSig, pkg.P_1.getEncoded())) {
-      throw new Error('Verification of s1 failed.');
+      throw new Error("Verification of s1 failed.");
     }
 
     // Verify that alpha and beta are valid by generating and verifying sigma_1n
     var s_a_1 = this.paillier.multiply(this.alpha, this.e);
     var s_b_1 = this.paillier.multiply(this.beta, r_1);
-    var sigma_1 = this.paillier.addCrypt(this.paillier.addCrypt(s_a_1, s_b_1), this.paillier.multiply(pkg.A, n));
+    var sigma_1 = this.paillier.addCrypt(
+      this.paillier.addCrypt(s_a_1, s_b_1),
+      this.paillier.multiply(pkg.A, n)
+    );
 
-    var e = Crypto.SHA256(sigma_1.toByteArrayUnsigned(), {asBytes: true});
+    var e = Crypto.SHA256(sigma_1.toByteArrayUnsigned(), { asBytes: true });
     e = BigInteger.fromByteArrayUnsigned(e);
     var sigma_1n = this.paillier.rerandomize(sigma_1, e);
-    ff('sigma_1n_b', sigma_1n);
+    ff("sigma_1n_b", sigma_1n);
 
     var sigma_1_verify = this.paillier.encrypt(pkg.s_1, pkg.v_n);
     if (!sigma_1n.equals(sigma_1_verify)) {
-      throw new Error('Sigma ciphertext did not match expected value.');
+      throw new Error("Sigma ciphertext did not match expected value.");
     }
 
     this.k2 = Bitcoin.ECDSA.getBigRandom(n);
-    ff('k2', this.k2);
+    ff("k2", this.k2);
 
     this.z2 = this.k2.modInverse(n);
-    ff('z2', this.z2);
+    ff("z2", this.z2);
 
     var Q_2 = G.multiply(this.k2);
-    ff('q2', Q_2);
+    ff("q2", Q_2);
 
     var Q = pkg.Q_1.multiply(this.k2);
     this.r = Q.getX().toBigInteger().mod(n);
-    ff('r', this.r);
+    ff("r", this.r);
 
     if (this.r.equals(BigInteger.ZERO)) {
-      throw new Error('r must not be zero.');
+      throw new Error("r must not be zero.");
     }
 
     var B = Bitcoin.ECDSA.getBigRandom(this.paillier.n.divide(n));
-    ff('B', B);
+    ff("B", B);
 
     var p = this.paillier;
     var s_a = p.multiply(this.alpha, this.e.multiply(this.z2));
     var s_b = p.multiply(this.beta, this.r.multiply(this.d2).multiply(this.z2));
     var sigma = p.add(p.addCrypt(s_a, s_b), B.multiply(n));
-    ff('sigma', sigma);
+    ff("sigma", sigma);
 
     return {
       Q_2: Q_2,
       r: this.r,
-      sigma: sigma
+      sigma: sigma,
     };
   };
 
@@ -206,26 +221,26 @@ function start() {
     this.r = Q.getX().toBigInteger().mod(n);
 
     if (!this.r.equals(pkg.r)) {
-      throw new Error('Could not confirm value for r.');
+      throw new Error("Could not confirm value for r.");
     }
 
     if (this.r.equals(BigInteger.ZERO)) {
-      throw new Error('r must not be zero.');
+      throw new Error("r must not be zero.");
     }
 
     var s = this.paillier.decrypt(pkg.sigma).mod(n);
-    ff('s', s);
+    ff("s", s);
 
     var sig = Bitcoin.ECDSA.serializeSig(this.r, s);
 
     var hash = this.e.toByteArrayUnsigned();
     if (!Bitcoin.ECDSA.verify(hash, sig, this.getPub())) {
-      throw new Error('Signature failed to verify.');
+      throw new Error("Signature failed to verify.");
     }
 
     return {
       r: this.r,
-      s: s
+      s: s,
     };
   };
 
@@ -248,10 +263,15 @@ function start() {
   log("r    :", hex(pkg3.r));
   log("r/CHK:", hex(rChk));
 
-  var hash = Crypto.SHA256(Crypto.SHA256(message, {asBytes: true}), {asBytes: true});
+  var hash = Crypto.SHA256(Crypto.SHA256(message, { asBytes: true }), {
+    asBytes: true,
+  });
   var eChk = BigInteger.fromByteArrayUnsigned(hash).mod(n);
   var dChk = alice.d1.multiply(bob.d2);
-  var sChk = kChk.modInverse(n).multiply(eChk.add(dChk.multiply(rChk))).mod(n);
+  var sChk = kChk
+    .modInverse(n)
+    .multiply(eChk.add(dChk.multiply(rChk)))
+    .mod(n);
   log("s    :", hex(pkg3.s));
   log("s/CHK:", hex(sChk));
 
@@ -262,22 +282,80 @@ function start() {
   var ver = Bitcoin.ECDSA.verify(hash, sig, pub);
   log("ver    :", ver);
   log("ver/CHK:", Bitcoin.ECDSA.verify(hash, sigChk, pub));
-  log("ver/CTL:", Bitcoin.ECDSA.verify(hash, Bitcoin.ECDSA.sign(hash, dChk), pub));
+  log(
+    "ver/CTL:",
+    Bitcoin.ECDSA.verify(hash, Bitcoin.ECDSA.sign(hash, dChk), pub)
+  );
   ff("result", ver ? "SIGNATURE VALID" : "SIGNATURE INVALID");
 
   var priv = Bitcoin.ECDSA.getBigRandom(n);
   pub = G.multiply(priv).getEncoded();
-  log("ver/GEN:", Bitcoin.ECDSA.verify(hash, Bitcoin.ECDSA.sign(hash, priv), pub));
-};
+  log(
+    "ver/GEN:",
+    Bitcoin.ECDSA.verify(hash, Bitcoin.ECDSA.sign(hash, priv), pub)
+  );
+}
+function start2() {
+  var privkeys = [
+    "ca48ec9783cf3ad0dfeff1fc254395a2e403cbbc666477b61b45e31d3b8ab458",
+    "1111111111111111111111111111111111111111111111111111111111111111",
+    "18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725",
+  ];
+
+  // compressed pubkeys
+  // var cpubkeys = [
+  //   "024b12d9d7c77db68388b6ff7c89046174c871546436806bcd80d07c28ea811992",
+  //   "034f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa",
+  //   "0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352",
+  // ];
+
+  // var pubkeys = cpubkeys.map(function (x) {
+  //   return ECPubKey(x).toHex(false);
+  // });
+
+  var addresses = [
+    "19SgmoUj4xowEjwtXvNAtYTAgbvR9iBCui",
+    "1MsHWS1BnwMc3tLE8G35UXsS58fKipzB7a",
+    "16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM",
+  ];
+  // var compressedAddresses = [
+  //   "1AA4sjKW2aUmbtN3MtegdvhYtDBbDEke1q",
+  //   "1Q1pE5vPGEEMqRcVRMbtBK842Y6Pzo6nK9",
+  //   "1PMycacnJaSqwwJqjawXBErnLsZ7RkXUAs",
+  // ];
+
+  for (var i = 0; i < addresses.length; ++i) {
+    var priv = new Bitcoin.ECKey(parseHexString(privkeys[i]));
+
+    var addr = addresses[i];
+    // var caddr = compressedAddresses[i];
+
+    console.log(i, priv.getBitcoinAddress().toString(), addr);
+  }
+}
+function parseHexString(str) {
+  var result = [];
+  while (str.length >= 2) {
+    result.push(parseInt(str.substring(0, 2), 16));
+    str = str.substring(2, str.length);
+  }
+
+  return result;
+}
 
 self.onmessage = function (event) {
+  //todo here
+  console.log("onmessage.....");
+  start2();
+  return;
   try {
     start();
-  } catch(e) {
-    var stack = e.stack.replace(/^[^\(]+?[\n$]/gm, '')
-      .replace(/^\s+at\s+/gm, '')
-      .replace(/^Object.<anonymous>\s*\(/gm, '{anonymous}()@')
-      .split('\n');
-    log(e+'\n'+stack);
+  } catch (e) {
+    var stack = e.stack
+      .replace(/^[^\(]+?[\n$]/gm, "")
+      .replace(/^\s+at\s+/gm, "")
+      .replace(/^Object.<anonymous>\s*\(/gm, "{anonymous}()@")
+      .split("\n");
+    log(e + "\n" + stack);
   }
 };

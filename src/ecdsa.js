@@ -2,13 +2,14 @@ function integerToBytes(i, len) {
   var bytes = i.toByteArrayUnsigned();
 
   if (len < bytes.length) {
-    bytes = bytes.slice(bytes.length-len);
-  } else while (len > bytes.length) {
-    bytes.unshift(0);
-  }
+    bytes = bytes.slice(bytes.length - len);
+  } else
+    while (len > bytes.length) {
+      bytes.unshift(0);
+    }
 
   return bytes;
-};
+}
 
 ECFieldElementFp.prototype.getByteLength = function () {
   return Math.floor((this.toBigInteger().bitLength() + 7) / 8);
@@ -43,11 +44,11 @@ ECPointFp.prototype.getEncoded = function (compressed) {
 
 ECPointFp.decodeFrom = function (curve, enc) {
   var type = enc[0];
-  var dataLen = enc.length-1;
+  var dataLen = enc.length - 1;
 
   // Extract x and y as byte arrays
-  var xBa = enc.slice(1, 1 + dataLen/2);
-  var yBa = enc.slice(1 + dataLen/2, 1 + dataLen);
+  var xBa = enc.slice(1, 1 + dataLen / 2);
+  var yBa = enc.slice(1 + dataLen / 2, 1 + dataLen);
 
   // Prepend zero byte to prevent interpretation as negative integer
   xBa.unshift(0);
@@ -62,8 +63,8 @@ ECPointFp.decodeFrom = function (curve, enc) {
 };
 
 ECPointFp.prototype.add2D = function (b) {
-  if(this.isInfinity()) return b;
-  if(b.isInfinity()) return this;
+  if (this.isInfinity()) return b;
+  if (b.isInfinity()) return this;
 
   if (this.x.equals(b.x)) {
     if (this.y.equals(b.y)) {
@@ -94,7 +95,11 @@ ECPointFp.prototype.twice2D = function () {
 
   var TWO = this.curve.fromBigInteger(BigInteger.valueOf(2));
   var THREE = this.curve.fromBigInteger(BigInteger.valueOf(3));
-  var gamma = this.x.square().multiply(THREE).add(this.curve.a).divide(this.y.multiply(TWO));
+  var gamma = this.x
+    .square()
+    .multiply(THREE)
+    .add(this.curve.a)
+    .divide(this.y.multiply(TWO));
 
   var x3 = gamma.square().subtract(this.x.multiply(TWO));
   var y3 = gamma.multiply(this.x.subtract(x3)).subtract(this.y);
@@ -103,8 +108,8 @@ ECPointFp.prototype.twice2D = function () {
 };
 
 ECPointFp.prototype.multiply2D = function (k) {
-  if(this.isInfinity()) return this;
-  if(k.signum() == 0) return this.curve.getInfinity();
+  if (this.isInfinity()) return this;
+  if (k.signum() == 0) return this.curve.getInfinity();
 
   var e = k;
   var h = e.multiply(new BigInteger("3"));
@@ -134,14 +139,18 @@ ECPointFp.prototype.isOnCurve = function () {
   var b = this.curve.getB().toBigInteger();
   var n = this.curve.getQ();
   var lhs = y.multiply(y).mod(n);
-  var rhs = x.multiply(x).multiply(x)
-    .add(a.multiply(x)).add(b).mod(n);
+  var rhs = x.multiply(x).multiply(x).add(a.multiply(x)).add(b).mod(n);
   return lhs.equals(rhs);
 };
 
 ECPointFp.prototype.toString = function () {
-  return '('+this.getX().toBigInteger().toString()+','+
-    this.getY().toBigInteger().toString()+')';
+  return (
+    "(" +
+    this.getX().toBigInteger().toString() +
+    "," +
+    this.getY().toBigInteger().toString() +
+    ")"
+  );
 };
 
 /**
@@ -160,13 +169,17 @@ ECPointFp.prototype.validate = function () {
   // Check coordinate bounds
   var x = this.getX().toBigInteger();
   var y = this.getY().toBigInteger();
-  if (x.compareTo(BigInteger.ONE) < 0 ||
-      x.compareTo(n.subtract(BigInteger.ONE)) > 0) {
-    throw new Error('x coordinate out of bounds');
+  if (
+    x.compareTo(BigInteger.ONE) < 0 ||
+    x.compareTo(n.subtract(BigInteger.ONE)) > 0
+  ) {
+    throw new Error("x coordinate out of bounds");
   }
-  if (y.compareTo(BigInteger.ONE) < 0 ||
-      y.compareTo(n.subtract(BigInteger.ONE)) > 0) {
-    throw new Error('y coordinate out of bounds');
+  if (
+    y.compareTo(BigInteger.ONE) < 0 ||
+    y.compareTo(n.subtract(BigInteger.ONE)) > 0
+  ) {
+    throw new Error("y coordinate out of bounds");
   }
 
   // Check y^2 = x^3 + ax + b (mod n)
@@ -186,7 +199,7 @@ ECPointFp.prototype.validate = function () {
 function dmp(v) {
   if (!(v instanceof BigInteger)) v = v.toBigInteger();
   return Crypto.util.bytesToHex(v.toByteArrayUnsigned());
-};
+}
 
 Bitcoin.ECDSA = (function () {
   var ecparams = getSECCurveByName("secp256k1");
@@ -194,8 +207,7 @@ Bitcoin.ECDSA = (function () {
 
   var P_OVER_FOUR = null;
 
-  function implShamirsTrick(P, k, Q, l)
-  {
+  function implShamirsTrick(P, k, Q, l) {
     var m = Math.max(k.bitLength(), l.bitLength());
     var Z = P.add2D(Q);
     var R = P.curve.getInfinity();
@@ -219,14 +231,13 @@ Bitcoin.ECDSA = (function () {
     }
 
     return R;
-  };
+  }
 
   var ECDSA = {
     getBigRandom: function (limit) {
       return new BigInteger(limit.bitLength(), rng)
         .mod(limit.subtract(BigInteger.ONE))
-        .add(BigInteger.ONE)
-      ;
+        .add(BigInteger.ONE);
     },
     sign: function (hash, priv) {
       var d = priv;
@@ -240,13 +251,16 @@ Bitcoin.ECDSA = (function () {
         var r = Q.getX().toBigInteger().mod(n);
       } while (r.compareTo(BigInteger.ZERO) <= 0);
 
-      var s = k.modInverse(n).multiply(e.add(d.multiply(r))).mod(n);
+      var s = k
+        .modInverse(n)
+        .multiply(e.add(d.multiply(r)))
+        .mod(n);
 
       return ECDSA.serializeSig(r, s);
     },
 
     verify: function (hash, sig, pubkey) {
-      var r,s;
+      var r, s;
       if (Bitcoin.Util.isArray(sig)) {
         var obj = ECDSA.parseSig(sig);
         r = obj.r;
@@ -275,13 +289,9 @@ Bitcoin.ECDSA = (function () {
       var n = ecparams.getN();
       var G = ecparams.getG();
 
-      if (r.compareTo(BigInteger.ONE) < 0 ||
-          r.compareTo(n) >= 0)
-        return false;
+      if (r.compareTo(BigInteger.ONE) < 0 || r.compareTo(n) >= 0) return false;
 
-      if (s.compareTo(BigInteger.ONE) < 0 ||
-          s.compareTo(n) >= 0)
-        return false;
+      if (s.compareTo(BigInteger.ONE) < 0 || s.compareTo(n) >= 0) return false;
 
       var c = s.modInverse(n);
 
@@ -335,20 +345,19 @@ Bitcoin.ECDSA = (function () {
      */
     parseSig: function (sig) {
       var cursor;
-      if (sig[0] != 0x30)
-        throw new Error("Signature not a valid DERSequence");
+      if (sig[0] != 0x30) throw new Error("Signature not a valid DERSequence");
 
       cursor = 2;
       if (sig[cursor] != 0x02)
-        throw new Error("First element in signature must be a DERInteger");;
-      var rBa = sig.slice(cursor+2, cursor+2+sig[cursor+1]);
+        throw new Error("First element in signature must be a DERInteger");
+      var rBa = sig.slice(cursor + 2, cursor + 2 + sig[cursor + 1]);
 
-      cursor += 2+sig[cursor+1];
+      cursor += 2 + sig[cursor + 1];
       if (sig[cursor] != 0x02)
         throw new Error("Second element in signature must be a DERInteger");
-      var sBa = sig.slice(cursor+2, cursor+2+sig[cursor+1]);
+      var sBa = sig.slice(cursor + 2, cursor + 2 + sig[cursor + 1]);
 
-      cursor += 2+sig[cursor+1];
+      cursor += 2 + sig[cursor + 1];
 
       //if (cursor != sig.length)
       //  throw new Error("Extra bytes in signature");
@@ -356,7 +365,7 @@ Bitcoin.ECDSA = (function () {
       var r = BigInteger.fromByteArrayUnsigned(rBa);
       var s = BigInteger.fromByteArrayUnsigned(sBa);
 
-      return {r: r, s: s};
+      return { r: r, s: s };
     },
 
     parseSigCompact: function (sig) {
@@ -375,7 +384,7 @@ Bitcoin.ECDSA = (function () {
       var r = BigInteger.fromByteArrayUnsigned(sig.slice(1, 33)).mod(n);
       var s = BigInteger.fromByteArrayUnsigned(sig.slice(33, 65)).mod(n);
 
-      return {r: r, s: s, i: i};
+      return { r: r, s: s, i: i };
     },
 
     /**
@@ -417,15 +426,17 @@ Bitcoin.ECDSA = (function () {
       var alpha = x.multiply(x).multiply(x).add(a.multiply(x)).add(b).mod(p);
       var beta = alpha.modPow(P_OVER_FOUR, p);
 
-      var xorOdd = beta.isEven() ? (i % 2) : ((i+1) % 2);
+      var xorOdd = beta.isEven() ? i % 2 : (i + 1) % 2;
       // If beta is even, but y isn't or vice versa, then convert it,
       // otherwise we're done and y == beta.
       var y = (beta.isEven() ? !isYEven : isYEven) ? beta : p.subtract(beta);
 
       // 1.4 Check that nR is at infinity
-      var R = new ECPointFp(curve,
-                            curve.fromBigInteger(x),
-                            curve.fromBigInteger(y));
+      var R = new ECPointFp(
+        curve,
+        curve.fromBigInteger(x),
+        curve.fromBigInteger(y)
+      );
       R.validate();
 
       // 1.5 Compute e from M
@@ -457,8 +468,7 @@ Bitcoin.ECDSA = (function () {
      * This function simply tries all four cases and returns the value
      * that resulted in a successful pubkey recovery.
      */
-    calcPubkeyRecoveryParam: function (address, r, s, hash)
-    {
+    calcPubkeyRecoveryParam: function (address, r, s, hash) {
       for (var i = 0; i < 4; i++) {
         try {
           var pubkey = Bitcoin.ECDSA.recoverPubKey(r, s, hash, i);
@@ -468,7 +478,7 @@ Bitcoin.ECDSA = (function () {
         } catch (e) {}
       }
       throw "Unable to find valid recovery factor";
-    }
+    },
   };
 
   return ECDSA;

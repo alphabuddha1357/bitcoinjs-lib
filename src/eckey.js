@@ -15,12 +15,14 @@ Bitcoin.ECKey = (function () {
       // Prepend zero byte to prevent interpretation as negative integer
       this.priv = BigInteger.fromByteArrayUnsigned(input);
     } else if ("string" == typeof input) {
-      if (input.length == 51 && input[0] == '5') {
+      if (input.length == 51 && input[0] == "5") {
         // Base58 encoded private key
         this.priv = BigInteger.fromByteArrayUnsigned(ECKey.decodeString(input));
       } else {
         // Prepend zero byte to prevent interpretation as negative integer
-        this.priv = BigInteger.fromByteArrayUnsigned(Crypto.util.base64ToBytes(input));
+        this.priv = BigInteger.fromByteArrayUnsigned(
+          Crypto.util.base64ToBytes(input)
+        );
       }
     }
     this.compressed = !!ECKey.compressByDefault;
@@ -63,7 +65,7 @@ Bitcoin.ECKey = (function () {
   ECKey.prototype.getPubKeyHash = function () {
     if (this.pubKeyHash) return this.pubKeyHash;
 
-    return this.pubKeyHash = Bitcoin.Util.sha256ripe160(this.getPub());
+    return (this.pubKeyHash = Bitcoin.Util.sha256ripe160(this.getPub()));
   };
 
   ECKey.prototype.getBitcoinAddress = function () {
@@ -76,8 +78,10 @@ Bitcoin.ECKey = (function () {
     var hash = this.priv.toByteArrayUnsigned();
     while (hash.length < 32) hash.unshift(0);
     hash.unshift(0x80);
-    var checksum = Crypto.SHA256(Crypto.SHA256(hash, {asBytes: true}), {asBytes: true});
-    var bytes = hash.concat(checksum.slice(0,4));
+    var checksum = Crypto.SHA256(Crypto.SHA256(hash, { asBytes: true }), {
+      asBytes: true,
+    });
+    var bytes = hash.concat(checksum.slice(0, 4));
     return Bitcoin.Base58.encode(bytes);
   };
 
@@ -109,19 +113,23 @@ Bitcoin.ECKey = (function () {
 
     var hash = bytes.slice(0, 33);
 
-    var checksum = Crypto.SHA256(Crypto.SHA256(hash, {asBytes: true}), {asBytes: true});
+    var checksum = Crypto.SHA256(Crypto.SHA256(hash, { asBytes: true }), {
+      asBytes: true,
+    });
 
-    if (checksum[0] != bytes[33] ||
-        checksum[1] != bytes[34] ||
-        checksum[2] != bytes[35] ||
-        checksum[3] != bytes[36]) {
+    if (
+      checksum[0] != bytes[33] ||
+      checksum[1] != bytes[34] ||
+      checksum[2] != bytes[35] ||
+      checksum[3] != bytes[36]
+    ) {
       throw "Checksum validation failed!";
     }
 
     var version = hash.shift();
 
     if (version != 0x80) {
-      throw "Version "+version+" not supported!";
+      throw "Version " + version + " not supported!";
     }
 
     return hash;
