@@ -116,11 +116,14 @@ function bnpFromNumber(a, b, c) {
     // new BigInteger(int,RNG)
     var x = new Array(),
       t = a & 7;
+    console.log("aaaa", a);
+    console.log("tttt", t);
     x.length = (a >> 3) + 1;
     b.nextBytes(x);
     console.log("x", x);
     if (t > 0) x[0] &= (1 << t) - 1;
     else x[0] = 0;
+    console.log("before fromString", x.toString());
     this.fromString(x, 256);
   }
 }

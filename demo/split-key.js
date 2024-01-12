@@ -296,6 +296,10 @@ function start() {
   );
 }
 function start2() {
+  var priv = new Bitcoin.ECKey();
+
+  console.log(priv.getBitcoinAddress().toString());
+
   var privkeys = [
     "ca48ec9783cf3ad0dfeff1fc254395a2e403cbbc666477b61b45e31d3b8ab458",
     "1111111111111111111111111111111111111111111111111111111111111111",

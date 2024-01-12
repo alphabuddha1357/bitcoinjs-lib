@@ -7,7 +7,9 @@ Bitcoin.ECKey = (function () {
     if (!input) {
       // Generate new key
       var n = ecparams.getN();
+      console.log("N", n.toString());
       this.priv = ECDSA.getBigRandom(n);
+      console.log("priv", this.priv.toString());
     } else if (input instanceof BigInteger) {
       // Input is a private key value
       this.priv = input;
